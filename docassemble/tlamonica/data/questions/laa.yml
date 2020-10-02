@@ -1,7 +1,52 @@
+objects:
+  - user: Individual
+  - member: DAList.using(object_type=Individual)
+---
 mandatory: true
 question: |
-  Hello, ${ name }.
+  Hello, ${ user }! 
+
+attachments:
+  - name: Document
+    filename: document
+    content: |
+      Here are your submitted results, ${ user }.
+      
+      % if len(member) >0:
+      Your family members listed were ${ member }.
+      %endif
+      
+      You told me you were born on ${ format_date(birthday, format='EEEE, MMMM d, yyyy') }, which can
+      also be written as ${ format_date(birthday, format="yyyy-MM-dd") } or as ${ format_date(birthday, format="MM/dd/yyyy") }
+      
+      % if legal_aid:
+      Good news, you qualify for legal aid.
+      % else:
+      Sorry - unfortunately you do not qualify for legal aid.
+      % endif
+ 
 ---
-question: What is your name?
+generic object: Individual
+question: |
+  What is ${ x.object_possessive('name') }?
 fields:
-  - Name: name 
+  - First Name: x.name.first
+  - Last Name: x.name.last
+
+---
+question: Do you live with family?
+yesno: member.there_are_any
+---
+question: Do you live with anyone else?
+yesno: member.there_is_another
+---
+question: Do you qualify for legal aid?
+yesno: legal_aid
+---
+question: What is your birthday?
+fields:
+  - Birthday: birthday
+    datatype: date
+  
+
+
