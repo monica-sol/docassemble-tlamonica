@@ -2,6 +2,27 @@ objects:
   - user: Individual
   - member: DAList.using(object_type=Individual)
 ---
+generic object: Individual
+question: |
+  What is ${ x.object_possessive('name') }?
+fields:
+  - First Name: x.name.first
+  - Last Name: x.name.last
+---
+mandatory: true
+code: |
+  # Code-flow block
+  
+  if not can_afford:
+    if has_lawyer:
+      still_acting
+  
+  if not is_appeal:
+    if in_berta:
+      lives_berta
+      family_matter
+      crim_matter
+---
 mandatory: true
 question: |
   Hello, ${ user }! 
@@ -14,24 +35,67 @@ attachments:
       
       % if len(member) >0:
       Your family members listed were ${ member }.
-      %endif
+      % endif
       
       You told me you were born on ${ format_date(birthday, format='EEEE, MMMM d, yyyy') }, which can
       also be written as ${ format_date(birthday, format="yyyy-MM-dd") } or as ${ format_date(birthday, format="MM/dd/yyyy") }
       
-      % if legal_aid:
-      Good news, you qualify for legal aid.
+      % if qualify_aid == True:
+      Based on the information you gave me, it appears as if you qualify for Legal Aid Alberta services - here's what you said.
       % else:
-      Sorry - unfortunately you do not qualify for legal aid.
+      Based on the information you gave me, it appears as if you do not qualify for Legal Aid Alberta services - here's what you said.
       % endif
- 
----
-generic object: Individual
-question: |
-  What is ${ x.object_possessive('name') }?
-fields:
-  - First Name: x.name.first
-  - Last Name: x.name.last
+      
+      % if can_afford == True:
+      You have indicated you can afford a lawyer.
+      % else:
+      You have indicated you cannot afford a lawyer.
+      % endif
+      
+      % if has_lawyer == True:
+      You have indicated that you have a lawyer.
+      % else:
+      You have indicated you do not have a lawyer.
+      % endif
+      
+      % if still_acting == True:
+      You have indicated that your lawyer is still acting for you.
+      % else:
+      You have indicated your lawyer is no longer acting for you.
+      % endif
+     
+      
+      % if is_appeal == True:
+      You have indicated your matter is an appeal for which you have already received LAA.
+      % else:
+      You have indicated you have not received LAA for this matter.
+      % endif
+      
+      % if in_berta == True:
+      You have indicated your matter is in Alberta.
+      % else:
+      You have indicated your matter is not in Alberta.
+      % endif
+      
+      % if family_matter == True:
+      You have indicated your matter is a family law matter.
+      % else:
+      You have indicated your matter is not a family law matter.
+      % endif
+      
+      % if crim_matter == True:
+      You have indicated your matter is a criminal law matter.
+      % else:
+      You have indicated your matter is not a criminal law matter.
+      % endif
+      
+      % if lives_berta == True:
+      You have indicated you live in Alberta.
+      % else: 
+      You have indicated you do not live in Alberta.
+      % endif
+  
+
 
 ---
 question: Do you live with family?
@@ -40,13 +104,54 @@ yesno: member.there_are_any
 question: Do you live with anyone else?
 yesno: member.there_is_another
 ---
-question: Do you qualify for legal aid?
-yesno: legal_aid
----
 question: What is your birthday?
 fields:
   - Birthday: birthday
     datatype: date
-  
-
+---
+question: Do you have a lawyer?
+yesno: has_lawyer
+---
+question: Is your lawyer still acting for you?
+yesno: still_acting
+---
+question: Can you afford a lawyer?
+yesno: can_afford
+---
+question: Is your legal matter located in Alberta?
+yesno: in_berta
+---
+question: Is your matter a family law matter?
+yesno: family_matter
+---
+question: Is your matter a criminal law matter?
+yesno: crim_matter
+---
+question: Do you live in Alberta?
+yesno: lives_berta
+---
+question: Is your matter an appeal of a matter for which you have received Legal Aid of Alberta Assistance?
+yesno: is_appeal
+---
+# Are they represented?
+code: |
+  if (still_acting) or (can_afford):
+    represented = True
+  else:
+    represented = False
+---
+# Do they meet residency requirement
+code: |
+  if (crim_matter or family_matter) and (lives_berta):
+    residence = True
+  else:
+    residence = False
+---
+# Are they eligible?
+code: |
+  if (is_appeal) or (residence and not represented):
+    qualify_aid = True
+  else:
+    qualify_aid = False
+---
 
