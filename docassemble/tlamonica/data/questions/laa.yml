@@ -1,113 +1,116 @@
 objects:
   - user: Individual
-  - member: DAList.using(object_type=Individual)
+  - member: DAList.using(object_type=Individual, complete_attribute="complete")
+  - member[i].monthly_income: Value
+  - member[i].annual_income: Value
+  - member[i].assets: Value
+  - user.monthly_income: Value
+  - user.annual_income: Value
+  - user.assets: Value
 ---
-generic object: Individual
-question: |
-  What is ${ x.object_possessive('name') }?
-fields:
-  - First Name: x.name.first
-  - Last Name: x.name.last
----
-mandatory: true
 code: |
-  # Code-flow block
-  
-  if not can_afford:
-    if has_lawyer:
-      still_acting
-  
-  if not is_appeal:
-    if in_berta:
-      lives_berta
-      family_matter
-      crim_matter
+  member[i].monthly_income.exists
+  member[i].complete = True
 ---
 mandatory: true
 question: |
   Hello, ${ user }! 
+subquestion: |
+  Please find your results enclosed in a downloadable document. You can click the "Preview" tab to view your results in the browser.
 
 attachments:
   - name: Document
     filename: document
     content: |
-      Here are your submitted results, ${ user }.
+      Here are your submitted results, ${ user }. Please find your eligibility for Legal Aid Alberta services at the bottom of this document.
       
-      % if len(member) >0:
-      Your family members listed were ${ member }.
+      Your monthly income is $${ user.monthly_income }.
+      Your annual income is $${ user.annual_income }.
+      You indicated you have $${ user.assets } in assets.
+      
+      % if len(member) > 0:
+      % for j in member:
+      You entered ${ j } as a cohabitant.
+      
+      Their income for the last 30 days was entered as $${ j.monthly_income}.
+      Their yearly income was entered as $${ j.annual_income }.
+      It was indicated they have $${ j.assets } in assets.
+      % endfor
+      % else:
+      You did not indicate you had any cohabitants.
+      
       % endif
+      
+      
       
       You told me you were born on ${ format_date(birthday, format='EEEE, MMMM d, yyyy') }, which can
       also be written as ${ format_date(birthday, format="yyyy-MM-dd") } or as ${ format_date(birthday, format="MM/dd/yyyy") }
       
-      % if qualify_aid == True:
-      Based on the information you gave me, it appears as if you qualify for Legal Aid Alberta services - here's what you said.
-      % else:
-      Based on the information you gave me, it appears as if you do not qualify for Legal Aid Alberta services - here's what you said.
-      % endif
-      
-      % if can_afford == True:
+      % if can_afford:
       You have indicated you can afford a lawyer.
       % else:
       You have indicated you cannot afford a lawyer.
-      % endif
-      
-      % if has_lawyer == True:
+      % if has_lawyer:
       You have indicated that you have a lawyer.
-      % else:
-      You have indicated you do not have a lawyer.
-      % endif
-      
-      % if still_acting == True:
+      % if still_acting:
       You have indicated that your lawyer is still acting for you.
       % else:
       You have indicated your lawyer is no longer acting for you.
       % endif
-     
+      % else:
+      You have indicated you do not have a lawyer.
+      % endif
+      % endif
       
-      % if is_appeal == True:
+     
+
+      
+      % if is_appeal:
       You have indicated your matter is an appeal for which you have already received LAA.
       % else:
       You have indicated you have not received LAA for this matter.
-      % endif
-      
-      % if in_berta == True:
+      % if in_berta:
       You have indicated your matter is in Alberta.
       % else:
       You have indicated your matter is not in Alberta.
       % endif
-      
-      % if family_matter == True:
+      % if family_matter:
       You have indicated your matter is a family law matter.
       % else:
       You have indicated your matter is not a family law matter.
       % endif
-      
-      % if crim_matter == True:
+      % if crim_matter:
       You have indicated your matter is a criminal law matter.
       % else:
       You have indicated your matter is not a criminal law matter.
       % endif
       
-      % if lives_berta == True:
+      % if lives_berta:
       You have indicated you live in Alberta.
       % else: 
       You have indicated you do not live in Alberta.
       % endif
-  
+     
+      % endif
+      
+      % if financially_eligible:
+      You are financially eligible.
+      % elif marginally_eligible:
+      You are marginally financially eligible.
+      % else:
+      You are not financially eligible.
+      % endif
+      
+      
+      % if qualify_aid and financially_eligible:
+      Based on the information you provided, it appears as if you qualify for Legal Aid Alberta services.
+      % elif qualify_aid and marginally_eligible:
+      Based on the information you provided, it appears as if you qualify for Legal Aid Alberta service.
+      % else:
+      Based on the information you provided, it appears as if you do not qualify for Legal Aid Alberta services.
+      % endif
 
-
----
-question: Do you live with family?
-yesno: member.there_are_any
----
-question: Do you live with anyone else?
-yesno: member.there_is_another
----
-question: What is your birthday?
-fields:
-  - Birthday: birthday
-    datatype: date
+      
 ---
 question: Do you have a lawyer?
 yesno: has_lawyer
@@ -135,7 +138,7 @@ yesno: is_appeal
 ---
 # Are they represented?
 code: |
-  if (still_acting) or (can_afford):
+  if (can_afford) or (has_lawyer and still_acting):
     represented = True
   else:
     represented = False
@@ -154,4 +157,130 @@ code: |
   else:
     qualify_aid = False
 ---
+generic object: Individual
+question: |
+  What is ${ x.object_possessive('name') }?
+fields:
+  - First Name: x.name.first
+  - Last Name: x.name.last
+---
+question: Do you live with family?
+yesno: member.there_are_any
+---
+question: Do you live with anyone else?
+yesno: member.there_is_another
+---
+question: What is your birthday?
+fields:
+  - Birthday: birthday
+    datatype: date
+---
+generic object: Individual
+question: |
+  Tell me about ${ x }'s income - if any.
+fields:
+  - Do they have any assets?: x.assets.exists
+    datatype: yesnowide
+  - Assets: x.assets.value
+    datatype: currency
+    show if: x.assets.exists
+  - Do they have a monthly income?: x.monthly_income.exists
+    datatype: yesnowide
+  - Monthly Income: x.monthly_income.value
+    datatype: currency
+    show if: x.monthly_income.exists
+  - Do they have an annual income?: x.annual_income.exists
+    datatype: yesnowide
+  - Annual Income: x.annual_income.value
+    datatype: currency
+    show if: x.annual_income.exists
+---
+code: |
+  # Are they financially eligible - only when combined income is AT or BELOW the max for a family of that size
+  if eligible_mincome and eligible_aincome:
+    financially_eligible = True
+  else:
+    financially_eligible = False
+---
+code: |
+  # Or are they marginally eligible - only when combined family income is not higher than 10% of the maximum monthly/annual income
+  if (marginal_mincome and eligible_aincome) or (eligible_mincome and marginal_aincome) or (marginal_mincome and marginal_aincome):
+    marginally_eligible = True
+  else:
+    marginally_eligible = False
+# Need to calc fam mincome and aincomes next.
+---
+# Let's calc monthly incomes - would they be below the maxes?
+code: |
+  if total_monthly_income < monthly_income_cap:
+    eligible_mincome = True
+    marginal_mincome = False
+  elif total_monthly_income < monthly_income_cap*1.1:
+    eligible_mincome = False
+    marginal_mincome = True
+  else:
+    eligible_mincome = False
+    marginal_mincome = False
+# Need total_monthly_income and monthly_income cap
+---
+# Next, annual incomes - below the maxes? 
+# to calculate marginally eligible, remember it has to be "if neither value is more than 10% higher than the max" - so we multiple the income cap by 1.1 (110%) and set that as the new pseudo max
 
+code: |
+  if total_annual_income < annual_income_cap:
+    eligible_aincome = True
+    marginal_aincome = False
+  elif total_annual_income < annual_income_cap*1.1:
+    eligible_aincome = False
+    marginal_aincome = True
+  else:
+    eligible_aincome = False
+    marginal_aincome = False
+
+# Next, need total_annual_income and annual_income_cap 
+# the monthly incomes and annual incomes from last blook are numbers from the table
+---
+# total_annual_income calculation
+code: |
+  total_monthly_income = 0
+  if user.monthly_income.exists:
+    total_monthly_income += user.monthly_income.value
+  for j in member:
+    if j.monthly_income.exists:
+      total_monthly_income += j.monthly_income.value
+---
+# total_annual_income calculation
+code: |
+  total_annual_income = 0
+  if user.annual_income.exists:
+    total_annual_income += user.annual_income.value
+  for j in member:
+    if j.annual_income.exists:
+      total_annual_income += j.annual_income.value
+---
+# Finally, income caps (we get this from the table)
+
+code: |
+  if family_size == 1:
+    monthly_income_cap = 1668
+    annual_income_cap = 20021
+  elif family_size == 2:
+    monthly_income_cap = 2066
+    annual_income_cap = 24788
+  elif family_size == 3:
+    monthly_income_cap = 2940
+    annual_income_cap = 35275
+  elif family_size == 4:
+    monthly_income_cap = 3178
+    annual_income_cap = 38134
+  elif family_size == 5:
+    monthly_income_cap = 3416
+    annual_income_cap = 40995
+  elif family_size >= 6:
+    monthly_income_cap = 3655
+    annual_income_cap = 43855
+# Now we need to go back and fix the eligibility for LAA to include the financial stuff. Document area for this.
+---
+code: |
+  family_size = 1 + len(member)
+---
